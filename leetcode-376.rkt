@@ -3,52 +3,57 @@
 
 #lang racket
 
-(define/contract (sign? n)
-  (-> exact-integer? exact-integer?)
-  (cond [(< n 0) -1]
-        [(> n 0) 1]
-        [else 0]))
+; replace define with a memoized version
+(define-syntax define-memoized
+  (syntax-rules ()
+    [(_ (f args ...) bodies ...)
+     (define f
+       ; store the cache as a hash of args => result
+       (let ([results (make-hash)])
+         ; need to do this to capture both the names and the values
+         (lambda (args ...)
+           ((lambda vals
+              ; if we haven't calculated it before, do so now
+              (when (not (hash-has-key? results vals))
+                (hash-set! results vals (begin bodies ...)))
+              ; return the cached result
+              (hash-ref results vals))
+            args ...))))]))
 
-(define/contract (compute-differences nums0)
-  (-> (listof exact-integer?) (listof exact-integer?))
-  (let ([a (first nums0)]
-        [tl (rest nums0)])
-    (if (empty? tl)
-        '()
-        (let ([b (first tl)])
-          (cons (- a b) (compute-differences tl))))))
+;; Start with the first number in nums.
+(define-memoize (start-with-first nums)
+  (if (empty? nums)
+      0
+      (+ 1
+         (max
+          (choose-next-larger (first nums) (rest nums))
+          (choose-next-smaller (first nums) (rest nums))))))
 
-(define/contract (wiggle-pair? a b)
-  (-> exact-integer? exact-integer? boolean?)
-  (let ([prev-sign (sign? b)]
-        [curr-sign (sign? a)])
-    (cond [(and (= prev-sign -1) (= curr-sign 1)) #t]
-          [(and (= prev-sign 1) (= curr-sign -1)) #t]
-          [else #f])))
+;; Choose a number larger than curr.
+(define-memoize (choose-next-larger curr nums)
+  (cond [(empty? nums) 0]
+        [(< curr (first nums))
+         (max (+ 1 (choose-next-smaller (first nums) (rest nums)))
+              (choose-next-larger curr (rest nums)))]
+        [else (choose-next-larger curr (rest nums))]))
 
-(define/contract (longest-wiggle differences0 curr-wiggle curr-length max-length)
-  (-> (listof exact-integer?) (listof exact-integer?) exact-integer? exact-integer? exact-integer?)
-  (if (empty? differences0)
-      (max max-length curr-length)
-      (if (wiggle-pair? (first differences0) (first curr-wiggle))
-          (longest-wiggle (rest differences0) (cons (first differences0) curr-wiggle) (+ 1 curr-length) max-length)
-          (longest-wiggle (rest differences0) (cons (first differences0) '()) 1 (max curr-length max-length)))))
+;; Choose a number smaller than curr.
+(define-memoize (choose-next-smaller curr nums)
+  (cond [(empty? nums) 0]
+        [(> curr (first nums))
+         (max (+ 1 (choose-next-larger (first nums) (rest nums)))
+              (choose-next-smaller curr (rest nums)))]
+        [else (choose-next-smaller curr (rest nums))]))
 
 (define/contract (wiggle-max-length nums)
   (-> (listof exact-integer?) exact-integer?)
-  (define differences (compute-differences nums))
-  (fprintf (current-output-port) "~v~n" differences)
-  (+ 1 (longest-wiggle (rest differences) (cons (first differences) '()) 1 1)))
+  (if (empty? nums)
+      0
+      (max (start-with-first nums)
+           (wiggle-max-length (rest nums)))))
 
 (module+ test
   (require rackunit)
-  (check-equal? (sign? -6) -1)
-  (check-equal? (sign? 6) 1)
-
-  (check-equal? (wiggle-pair? -1 1) #t)
-  (check-equal? (wiggle-pair? 1 -1) #t)
-  (check-equal? (wiggle-pair? 1 1) #f)
-  (check-equal? (wiggle-pair? -1 -1) #f)
   
   ;; Example 1
   (let ([nums (list 1 7 4 9 2 5)]
