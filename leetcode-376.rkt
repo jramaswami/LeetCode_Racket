@@ -3,38 +3,62 @@
 
 #lang racket
 
-
-;; Start with the first number in nums.
-(define (start-with-first nums)
-  (if (empty? nums)
-      0
-      (+ 1
-         (max
-          (choose-next-larger (first nums) (rest nums))
-          (choose-next-smaller (first nums) (rest nums))))))
-
-;; Choose a number larger than curr.
-(define (choose-next-larger curr nums)
-  (cond [(empty? nums) 0]
-        [(< curr (first nums))
-         (max (+ 1 (choose-next-smaller (first nums) (rest nums)))
-              (choose-next-larger curr (rest nums)))]
-        [else (choose-next-larger curr (rest nums))]))
-
-;; Choose a number smaller than curr.
-(define (choose-next-smaller curr nums)
-  (cond [(empty? nums) 0]
-        [(> curr (first nums))
-         (max (+ 1 (choose-next-larger (first nums) (rest nums)))
-              (choose-next-smaller curr (rest nums)))]
-        [else (choose-next-smaller curr (rest nums))]))
-
 (define/contract (wiggle-max-length nums)
   (-> (listof exact-integer?) exact-integer?)
-  (if (empty? nums)
-      0
-      (max (start-with-first nums)
-           (wiggle-max-length (rest nums)))))
+
+  (define nums0 (list->vector nums))
+  (define N (vector-length nums0))
+
+  (define (start-with i)
+    (if (> i N)
+        0
+        (let ([x (vector-ref nums0 i)]
+              [j (+ 1 i)])
+          (+ 1
+             (max
+              (choose-next-larger x j)
+              (choose-next-smaller x j))))))
+
+  (define (choose-next-larger curr i)
+    (if (= i N)
+        0
+        (let ([x (vector-ref nums0 i)]
+              [j (+ 1 i)])
+          (if (< curr x)
+              (max (+ 1 (choose-next-smaller x j))
+                   (choose-next-larger curr j))
+              (choose-next-larger curr j)))))
+
+  (define (choose-next-smaller curr i)
+    (if (= i N)
+        0
+        (let ([x (vector-ref nums0 i)]
+              [j (+ 1 i)])
+          (if (> curr x)
+              (max (+ 1 (choose-next-larger x j))
+                   (choose-next-smaller curr j))
+              (choose-next-smaller curr j)))))
+
+  ;; Memoize functions
+  (define (memoize f)
+    (let ([cache (make-hash)])
+      (lambda (x y)
+        (let ([key (list x y)])
+          (if (hash-has-key? cache key)
+              (hash-ref cache key)
+              (let ([result (f x y)])
+                (hash-set! cache key result)
+                result))))))
+
+  (set! choose-next-larger (memoize choose-next-larger))
+  (set! choose-next-smaller (memoize choose-next-smaller))
+  
+  (define (loop i)
+    (if (= i N)
+        0
+        (max (start-with i) (loop (+ 1 i)))))
+
+  (loop 0))
 
 (module+ test
   (require rackunit)
