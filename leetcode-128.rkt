@@ -24,7 +24,9 @@
         (compute-sequence-length n)
         0))
 
-  (apply max (set-map nums-set sequence-length)))
+  (if (empty? nums)
+      0
+      (apply max (set-map nums-set sequence-length))))
     
 
 (module+ test
