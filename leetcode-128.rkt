@@ -14,19 +14,17 @@
     (not (set-member? nums-set (- n 1))))
 
   ;; Compute the length of sequence starting with n.
-  (define (sequence-length n)
+  (define (compute-sequence-length n)
     (if (set-member? nums-set n)
-        (+ 1 (sequence-length (+ 1 n)))
+        (+ 1 (compute-sequence-length (+ 1 n)))
         0))
 
-  ;; Return the longest sequence that can be found.
-  (define (solve nums0)
-    (cond [(empty? nums0) 0]
-          [(starts-sequence (first nums0))
-           (max (sequence-length (first nums0)) (solve (rest nums0)))]
-          [else (solve (rest nums0))]))
+  (define (sequence-length n)
+    (if (starts-sequence n)
+        (compute-sequence-length n)
+        0))
 
-  (solve nums))
+  (apply max (set-map nums-set sequence-length)))
     
 
 (module+ test
@@ -36,4 +34,8 @@
     (check-equal? (longest-consecutive nums) expected))
   (let ([nums (list 0 3 7 2 5 8 4 6 0 1)]
         [expected 9])
+    (check-equal? (longest-consecutive nums) expected))
+  ;; RTE
+  (let ([nums '()]
+        [expected 0])
     (check-equal? (longest-consecutive nums) expected)))
