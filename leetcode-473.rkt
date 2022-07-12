@@ -20,19 +20,30 @@
    (lambda (bitmask) (can-form-side? bitmask side-length matchsticks))
    (range (expt 2 (length matchsticks)))))
 
-(define (can-form-square? possible-bitmasks matchsticks-length)
-  (if (< (length possible-bitmasks) 4)
-      #f
-      (let ([ALL (- (expt 2 matchsticks-length) 1)])
-        (for/and ([combo (combinations possible-bitmasks 4)])
-          (= (apply bitwise-ior combo) ALL)))))
+;; Find four sides that can go together with no overlap of matches.
+(define (find-four possible-sides sides-found curr-selection)
+  (cond [(= sides-found 4) #t]
+        [(empty? possible-sides) #f]
+        [(= (bitwise-xor (first possible-sides) curr-selection)
+            (+ (first possible-sides) curr-selection))
+         (or
+          (find-four
+           (rest possible-sides) (+ 1 sides-found)
+           (+ (first possible-sides) curr-selection))
+          (find-four
+           (rest possible-sides) sides-found
+           curr-selection))]
+        [else
+         (find-four
+          (rest possible-sides) sides-found
+          curr-selection)]))
         
 (define/contract (makesquare matchsticks)
   (-> (listof exact-integer?) boolean?)
   (define N (length matchsticks))
   (define total-length (foldr + 0 matchsticks))
   (if (divides? 4 total-length)
-      (can-form-square? (possible-bitmasks (/ total-length 4) matchsticks) N)
+      (find-four (possible-bitmasks (/ total-length 4) matchsticks) 0 0)
       #f)
   )
 
@@ -57,5 +68,9 @@
   ;; WA
   (let ([matchsticks (list 5 5 5 5 4 4 4 4 3 3 3 3)]
         [expected #t])
+    (check-equal? (makesquare matchsticks) expected))
+  ;; TLE
+  (let ([matchsticks (list 1 1 1 1 1 1 1 1 1 1 1 1 1 1 6)]
+        [expected #f])
     (check-equal? (makesquare matchsticks) expected))
   )
