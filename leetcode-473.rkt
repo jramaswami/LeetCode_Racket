@@ -42,10 +42,13 @@
   (-> (listof exact-integer?) boolean?)
   (define N (length matchsticks))
   (define total-length (foldr + 0 matchsticks))
-  (if (divides? 4 total-length)
-      (find-four (possible-bitmasks (/ total-length 4) matchsticks) 0 0)
-      #f)
-  )
+  (define side-length (/ total-length 4))
+  (cond [(not (divides? 4 total-length)) #f]
+        [(for/and ([m matchsticks])
+           (> m side-length))
+         #f]
+        [else
+         (find-four (possible-bitmasks (/ total-length 4) matchsticks) 0 0)]))
 
 (module+ test
   (require rackunit)
@@ -72,5 +75,8 @@
   ;; TLE
   (let ([matchsticks (list 1 1 1 1 1 1 1 1 1 1 1 1 1 1 6)]
         [expected #f])
+    (check-equal? (makesquare matchsticks) expected))
+  (let ([matchsticks (list 1 1 1 1 1 1 1 1 1 1 1 1)]
+        [expected #t])
     (check-equal? (makesquare matchsticks) expected))
   )
