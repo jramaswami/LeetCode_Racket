@@ -10,7 +10,6 @@
         [(char-lower-case? (first word-chars)) (count-capitals (rest word-chars))]
         [else (+ 1 (count-capitals (rest word-chars)))]))
 
-         
 (define/contract (detect-capital-use word)
   (-> string? boolean?)
   (let* ([word-chars (string->list word)]
